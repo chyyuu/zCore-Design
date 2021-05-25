@@ -1,6 +1,6 @@
 # zCore 整体结构和设计模式
 
-首先，从 [Rust语言操作系统的设计与实现,王润基本科毕设论文,2019](https://github.com/rcore-os/zCore/wiki/files/wrj-thesis.pdf) 和 [zCore操作系统内核的设计与实现,潘庆霖本科毕设论文,2020](https://github.com/rcore-os/zCore/wiki/files/pql-thesis.pdf) 可以了解到从 rCore 的设计到 zCore 的设计过程的全貌。
+
 
 ## zCore 的整体结构
 
@@ -40,3 +40,36 @@ zCore 内核运行时组件层次概况如下：
 其中，VDSO（Virtual dynamic shared object）是一个映射到用户空间的 so 文件，可以在不陷入内核的情况下执行一些简单的系统调用。在设计中，所有中断都需要经过 VDSO 拦截进行处理，因此重写 VDSO 便可以实现自定义的对下层系统调用（syscall）的支持。Executor 是 zCore 中基于 Rust 的 `async` 机制的协程调度器。
 
 在HAL接口层的设计上，还借助了 Rust 的能够指定函数链接过程的特性。即，在 kernel-­hal 中规定了所有可供 zircon­-object 库及 zircon-­syscall 库调用的虚拟硬件接口，以函数 API 的形式给出，但是内部均为未实现状态，并设置函数为弱引用链接状态。在 kernel­-hal-­bare 中才给出裸机环境下的硬件接口具体实现，编译 zCore 项目时、链接的过程中将会替换/覆盖 kernel-­hal 中未实现的同名接口，从而达到能够在编译时灵活选择 HAL 层的效果。
+
+
+
+## 与其他操作系统的比较
+
+| 主题           | Windows                                   | Linux                                             | Fushsia                                      | zCore                       |
+| -------------- | ----------------------------------------- | ------------------------------------------------- | -------------------------------------------- | --------------------------- |
+| 一切皆？       | Object                                    | File                                              | Object                                       | Object                      |
+| 内核           | 偏微内核                                  | 偏宏内核                                          | （偏）微内核                                 | 中立内核                    |
+| 事件           | 同步对象Event                             | signal,被动调用函数                               | Object Signal                                | Object Signal               |
+| 安全           | Object属性                                | 文件权限+ACL+selinux                              | Object权限                                   | Object权限                  |
+| 内存权限       | 对内存块Section的封装                     | 无                                                | pager, VMO,VMAR                              | VMO,VMAR                    |
+| 对象跨进程传递 | 不依赖父子关系 ，开销极低(只需复制handle) | 依赖父子关系，开销高(参考Android Binder实现)      | 仿go.Channel思想 ，开销极低(channel移动对象) | Rust.Channel思想 ，开销极低 |
+| 任务组织       | job,进程,线程,纤程                        | Session组,进程组,线程对应内核进程                 | job,进程,线程                                | job,进程,线程,协程          |
+| 进程创建       | 创建新进程并允许继承对象                  | 通过fork半复制进程                                | 创建进程不支持fork                           | 创建进程，目前不支持fork    |
+| 目录可见       | 硬盘分区可见                              | 操作系统组织的目录                                | 只能看到本程序目录                           | 只能看到指定目录            |
+| posix线程      | 较为完整                                  | 较为完整                                          | 部分支持,不支持进程共享的互斥锁              | 部分支持                    |
+| signal         | 简陋支持，在实践中几乎不采用              | UNIX signal机制                                   | 不提供使其他线程跳出的方法 无信号安全概念    | 不支持                      |
+| fork           | 不支持 可以通过Object继承小范围模拟       | 全量继承对象，重度依赖fork， 对多线程程序支持有限 | 完全不支持                                   | 不支持                      |
+| 锁             | 各种锁的Object                            | 皆抽象为futex                                     | futex                                        | futex                       |
+| 隔离           | exe几乎谈不上隔离 wsl&进程级UWP沙箱       | docker小系统级沙箱                                | 进程级完全沙箱                               | 进程级完全沙箱              |
+| 驱动           | 允许闭源的驱动                            | 位于内核中，复杂易错                              | 可在用户态，允许闭源的DDK框架                | 可在用户态或内核态          |
+| 异步机制       | Driver级别                                | 回调函数                                          | 一定异步机制                                 | 基于协程的异步机制          |
+| 用户态运行     | 无                                        | User-Mode Linux                                   | 无                                           | User-Mode zCore             |
+| Linux支持      | WSL方式                                   | 自然支持                                          | 无/Posix用户态库                             | 内核级支持                  |
+| 网络协议栈     | 闭源，内核态                              | 通用性强，内核态                                  | 用户态                                       | 跨内核态和用户态            |
+
+
+
+## 参考
+
+-  [Rust语言操作系统的设计与实现,王润基本科毕设论文,2019](https://github.com/rcore-os/zCore/wiki/files/wrj-thesis.pdf) 
+- [zCore操作系统内核的设计与实现,潘庆霖本科毕设论文,2020](https://github.com/rcore-os/zCore/wiki/files/pql-thesis.pdf) 

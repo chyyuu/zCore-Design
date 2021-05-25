@@ -1,25 +1,22 @@
-# 初识内核对象
+# 内核对象
 
 ## 内核对象简介
 
-在动手编写我们的代码之前，需要首先进行调研和学习，对目标对象有一个全面系统的了解。
-而了解一个项目设计的最好方式就是阅读官方提供的手册和文档。
+[内核对象]这个概念来源于Fuchsia 官方文档，表示内核管理的各种资源。
 
-让我们先来阅读一下 Fuchsia 官方文档：[内核对象]。这个链接是社区翻译的中文版，已经有些年头了。如果读者能够科学上网，推荐直接阅读[官方英文版]。
+[内核对象]: https://fuchsia.dev/fuchsia-src/reference/kernel_objects/objects
 
-[内核对象]: https://github.com/zhangpf/fuchsia-docs-zh-CN/blob/master/zircon/docs/objects.md
-[官方英文版]: https://fuchsia.dev/fuchsia-src/reference/kernel_objects/objects
-
-通过阅读文档，我们了解到与内核对象相关的三个重要概念：**对象（Object），句柄（Handle），权限（Rights）**。它们在 Zircon 内核中的角色和关系如下图所示：
+内核对象相关的三个重要概念：**对象（Object），句柄（Handle），权限（Rights）**。它们在 Zircon 内核中的角色和关系如下图所示：
 
 ![](img/ch01-01-kernel-object.png)
 
-简单来说：
+这三者的含义和关系如下所示：
 
-* Zircon是一个基于对象的内核，内核资源被抽象封装在不同的 **对象** 中。
-* 用户程序通过 **句柄** 与内核交互。句柄是对某一对象的引用，并且附加了特定的 **权限**。
+* zCore是一个基于对象的内核，内核资源被抽象封装在不同的 **对象** 中。对象可能有多个 **句柄**（在一个或多个进程中）引用它们。
+* 用户程序通过 **句柄** 与内核交互。句柄是对某一对象的引用，并且附加了特定的 **权限**。当用户查询执行系统调用时，内核会检查 **句柄** 的参数是否引用了调用进程的 句柄表中存在的实际句柄，并进一步检查该句柄的类型正确，且该句柄具有所请求操作的必需 **权限**。
 * 对象通过 **引用计数** 管理生命周期。对于大多数对象，当指向它的最后一个句柄关闭时，对象随之销毁，或[进入无法挽回的最终状态](https://fuchsia.dev/fuchsia-src/concepts/kernel/concepts#handles_and_rights )。
 
+### 内核对象相关系统调用
 此外在内核对象的文档中，还列举了一些[常用对象]。点击链接进去就能查看到这个对象的[具体描述]，在页面最下方还列举了与这个对象相关的[全部系统调用]。
 进一步查看系统调用的 [API 定义]，以及它的[行为描述]，我们就能更深入地了解用户程序操作内核对象的一些细节：
 
@@ -42,8 +39,10 @@
 [`zx_channel_write`]: https://github.com/zhangpf/fuchsia-docs-zh-CN/blob/master/zircon/docs/syscalls/channel_write.md
 [`zx_handle_close`]: https://github.com/zhangpf/fuchsia-docs-zh-CN/blob/master/zircon/docs/syscalls/handle_close.md
 
-我们还发现，有一类 Object 系统调用是对所有内核对象都适用的。
+有一类 Object 系统调用是对所有内核对象都适用的。
 这表明所有内核对象都有一些公共属性，例如 ID、名称等等。每一种内核对象也会有自己特有的属性。
+
+### 信号
 
 其中一些 Object 系统调用和信号相关。Zircon 每个内核对象都附带有 32 个 **[信号（Signals）]**，它们代表了不同类型的事件。
 与传统 Unix 系统的信号不同，它不能异步地打断用户程序运行，而只能由用户程序主动地阻塞等待在某个对象的某些信号上面。
@@ -54,7 +53,7 @@
 以上我们了解了 Zircon 内核对象的相关概念和使用方式。接下来在这一节中，我们将用 Rust 实现内核对象的基本框架，以方便后续快速实现各种具体类型的内核对象。
 从传统面向对象语言的视角看，我们只是在实现一个基类。但由于 Rust 语言模型的限制，这件事情需要用到一些特殊的技巧。
 
-## 建立项目
+## 实践：建立内核对象
 
 首先我们需要安装 Rust 工具链。在 Linux 或 macOS 系统下，只需要用一个命令下载安装 rustup 即可：
 
@@ -103,7 +102,7 @@ test tests::it_works ... ok
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
 ```
 
-## 实现 KernelObject 接口
+### 实现 KernelObject 接口
 
 所有的内核对象有一系列共同的属性和方法，我们称这些方法为对象的公共**接口（Interface）**。
 同一种方法在不同类型的对象中可能会有不同的行为，在面向对象语言中我们称其为**多态（Polymorphism）**。
@@ -128,7 +127,7 @@ pub trait KernelObject: Send + Sync {
 
 [`Send + Sync`]: https://kaisery.github.io/trpl-zh-cn/ch16-04-extensible-concurrency-sync-and-send.html
 
-## 实现一个空对象
+### 实现一个空对象
 
 接下来我们实现一个最简单的空对象 `DummyObject`，并为它实现 `KernelObject` 接口：
 
@@ -194,7 +193,7 @@ test tests::dummy_object ... ok
 
 大功告成！让我们用 `cargo fmt` 命令格式化一下代码，然后记得 `git commit` 及时保存进展。
 
-## 实现接口到具体类型的向下转换
+### 实现接口到具体类型的向下转换
 
 在系统调用中，用户进程会传入一个内核对象的句柄，然后内核会根据系统调用的类型，尝试将其转换成特定类型的对象。
 于是这里产生了一个很重要的需求：将接口 `Arc<dyn KernelObject>` 转换成具体类型的结构 `Arc<T> where T: KernelObject`。
@@ -274,7 +273,7 @@ test object::downcast ... ok
 test object::tests::dummy_object ... ok
 ```
 
-## 模拟继承：用宏自动生成接口实现代码
+### 模拟继承：用宏自动生成接口实现代码
 
 上面我们已经完整实现了一个内核对象，代码看起来很简洁。但当我们要实现更多对象的时候，就会发现一个问题：
 这些对象拥有一些公共属性，接口方法也有共同的实现。
@@ -349,9 +348,9 @@ impl KObjectBase {
 pub struct DummyObject;
 ```
 
-## 总结
+## 小结
 
-在这一节中我们用 Rust 语言实现了 Zircon 最核心的**内核对象**概念。在此过程中涉及到 Rust 的一系列语言特性和设计模式：
+本章我们介绍了**内核对象**的相关基本概念，并在实践小节中用 Rust 语言实现了 Zircon 最核心的**内核对象**概念。在此过程中涉及到 Rust 的一系列语言特性和设计模式：
 
 - 使用 **trait** 实现接口
 - 使用 **内部可变性** 模式实现并发对象
@@ -359,8 +358,8 @@ pub struct DummyObject;
 - 使用组合模拟继承，并使用 **宏** 实现模板代码的自动生成
 
 由于 Rust 独特的[面向对象编程特性]，我们在实现内核对象的过程中遇到了一定的挑战。
-不过万事开头难，解决这些问题为整个项目打下了坚实基础，后面实现新的内核对象就会变得简单很多。
+不过万事开头难，解决这些问题为zCore操作系统内核打下了坚实基础，后面实现新的内核对象就会变得简单很多。
 
 [面向对象编程特性]: https://kaisery.github.io/trpl-zh-cn/ch17-00-oop.html
 
-在下一节中，我们将介绍内核对象相关的另外两个概念：句柄和权限，并实现内核对象的存储和访问。
+
