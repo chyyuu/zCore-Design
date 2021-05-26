@@ -77,7 +77,7 @@ $ cd zcore
 由于我们会用到一些不稳定（unstable）的语言特性，需要使用 nightly 版本的工具链。在项目根目录下创建一个 `rust-toolchain` 文件，指明使用的工具链版本：
 
 ```sh
-{{#include ../../code/ch01-01/rust-toolchain}}
+{{#include ../../code/rust-toolchain}}
 ```
 
 这个程序库目前是在你的 Linux 或 macOS 上运行，但有朝一日它会成为一个真正的 OS 在裸机上运行。

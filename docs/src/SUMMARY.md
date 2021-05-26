@@ -42,9 +42,14 @@
 - [Linux支持](ch07-00-linux.md)
   
     - [Linux任务管理](ch07-01-linux-proc.md)
+    
     - [Linux文件管理](ch07-01-linux-fs.md)
+    
     - [Linux支持管理](ch07-01-linux-other.md)
+    
     - [测试用例](ch07-02-linux-benchmark.md)
+    
+    - [系统调用列表](ch07-03-linux-syscall.md)
     
       
     
