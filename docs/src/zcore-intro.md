@@ -31,6 +31,15 @@ zCore 设计的顶层是上层操作系统，比如 zCore、rCore、Zircon LibOS
 
 ## zCore 内核组件
 
+zCore 内核组件主要有如下积累：
+
+- 用户支持类：zircon syscall，linux syscall
+- 执行类：基于Task的Job，Process，Thread，Future
+- 进程间通信类：Channel、Socket、FIFO
+- 内存管理类：VMO、VMAR
+- 信号通知/同步互斥类：Event、Event Pair、Futex、Semaphore、Port
+- 硬件抽象类：FrameAllocator、PageTable、Trapframe、Executor
+
 zCore 内核运行时组件层次概况如下：
 
 ![image-20200805123801306](zcore-intro/image-20200805123801306.png)
